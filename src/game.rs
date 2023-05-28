@@ -22,7 +22,7 @@ enum FeedbackColors {
 
 pub struct Board {
     guesses: Vec<Vec<CodeColors>>,
-    feedback: Vec<Vec<CodeColors>>,
+    feedback: Vec<Vec<FeedbackColors>>,
     code: Vec<CodeColors>,
 }
 
@@ -85,8 +85,10 @@ impl Board {
         }
  
         self.guesses.push(guess.clone());
+        let feedback = self.get_feedback(guess.clone());
+        self.feedback.push(feedback);
 
-        self.get_feedback(guess.clone());
+
         guess
     }
     
@@ -115,7 +117,7 @@ impl Board {
         // check if guess is correct
         if feedback.len() == 5 {
             return feedback
-            
+            // TODO: add game winning function to call here.
         }
 
         // check for same color, different position
@@ -130,15 +132,27 @@ impl Board {
             }
         }
 
+        // add 'empty' to any remaining blank spaces
+        let remaining_spaces = 5 - feedback.len();
+        for _ in 0..remaining_spaces {
+            feedback.push(FeedbackColors::Empty);
+        }
+
+        assert!(feedback.len() == 5);
+
         feedback
 
     }
 
+    fn game_over(self) {
+        todo!()
+    }
+
     pub fn print_board(&self) {
+        let mut guess_string = "".to_string();
         for guess in &self.guesses {
-            let mut guess_string = "".to_string();
-            for color in guess {
-                match color {
+            for guess_color in guess {
+                match guess_color {
                     CodeColors::Red => guess_string.push_str("🔴"),
                     CodeColors::Orange => guess_string.push_str("🟠"),
                     CodeColors::Yellow => guess_string.push_str("🟡"),
@@ -149,8 +163,21 @@ impl Board {
                     CodeColors::Black => guess_string.push_str("⚫️"),
                 }
             }
-            print!("{}\n", guess_string);
+            
         }
+        
+        let mut feedback_string = "".to_string();
+        for feedback in &self.feedback {
+            for feedback_color in feedback {
+                match feedback_color {
+                    FeedbackColors::White => feedback_string.push_str("⬜️"),
+                    FeedbackColors::Black => feedback_string.push_str("⬛️"),
+                    FeedbackColors::Empty => continue,
+                }
+            }
+        }
+
+        print!("{} | {}\n", guess_string, feedback_string);
 }
 pub fn reveal_code(&self) -> Vec<CodeColors> {
     return self.code.clone();
