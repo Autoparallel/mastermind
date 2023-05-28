@@ -1,7 +1,7 @@
-use std::io;
+use std::{io, collections::HashSet};
 use rand::random;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 pub enum CodeColors {
     Red,
     Orange,
@@ -13,9 +13,11 @@ pub enum CodeColors {
     Black,   
 }
 
+
 enum FeedbackColors {
     White,
     Black,
+    Empty,
 }
 
 pub struct Board {
@@ -49,7 +51,7 @@ impl Board {
         }
     }
 
-    pub fn read_guess(&mut self) -> Vec<CodeColors> {
+    pub fn game_step(&mut self) -> Vec<CodeColors> {
         let mut guess: Vec<CodeColors> = Vec::new();
         
         println!("Enter your guess (one color at a time):");
@@ -81,21 +83,55 @@ impl Board {
                 break;
             }
         }
-
+ 
         self.guesses.push(guess.clone());
+
+        self.get_feedback(guess.clone());
         guess
     }
     
 
-    pub fn add_guess(&mut self, guess: Vec<CodeColors>) {
-        if guess.len() != 5 {
-            panic!("Guess must be 5 colors long!");
-        }
-        self.guesses.push(guess);
-    }
+    // pub fn add_guess(&mut self, guess: Vec<CodeColors>) {
+    //     if guess.len() != 5 {
+    //         panic!("Guess must be 5 colors long!");
+    //     }
+    //     self.guesses.push(guess);
+    // }
 
-    fn add_feedback(&mut self, feedback: [FeedbackColors; 5]) {
-        todo!()
+    fn get_feedback(&mut self, guess: Vec<CodeColors>) -> Vec<FeedbackColors> {
+        let mut guess_remaining = guess.clone();
+        let mut code_remaining = self.code.clone();
+        let mut feedback = vec![];
+
+        // checking for same color ad same position
+        for (index, color) in guess.iter().enumerate(){
+            if *color == self.code[index]{
+                feedback.push(FeedbackColors::Black);
+                guess_remaining.remove(index);
+                code_remaining.remove(index);
+            }
+        }
+
+        // check if guess is correct
+        if feedback.len() == 5 {
+            return feedback
+            
+        }
+
+        // check for same color, different position
+        for guess_color in guess_remaining.into_iter() {
+            let result = code_remaining.clone().into_iter().enumerate().find(|(_,code_color)| *code_color==guess_color);
+            match result {
+                Some((index, _)) => {
+                    feedback.push(FeedbackColors::White);
+                    code_remaining.remove(index);
+                },
+                None => continue,
+            }
+        }
+
+        feedback
+
     }
 
     pub fn print_board(&self) {

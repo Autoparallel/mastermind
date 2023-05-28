@@ -7,7 +7,7 @@ fn main() {
 
     let mut number_of_guesses = 0;
     loop {
-        board.read_guess();
+        board.game_step();
         board.print_board();
         number_of_guesses += 1;
         // println!("Number of guesses: {}", number_of_guesses);
