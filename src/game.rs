@@ -1,5 +1,5 @@
-use std::{io, collections::HashSet};
 use rand::random;
+use std::io;
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 pub enum CodeColors {
@@ -10,10 +10,10 @@ pub enum CodeColors {
     Blue,
     Brown,
     White,
-    Black,   
+    Black,
 }
 
-
+#[derive(Copy, Clone)]
 enum FeedbackColors {
     White,
     Black,
@@ -26,6 +26,7 @@ pub struct Board {
     code: Vec<CodeColors>,
 }
 
+#[allow(clippy::new_without_default)]
 impl Board {
     pub fn new() -> Board {
         let mut code = Vec::new();
@@ -51,17 +52,19 @@ impl Board {
         }
     }
 
-    pub fn game_step(&mut self) -> Vec<CodeColors> {
+    pub fn game_step(&mut self) -> bool {
         let mut guess: Vec<CodeColors> = Vec::new();
-        
+
         println!("Enter your guess (one color at a time):");
         println!("Valid colors: Red 🔴, Orange 🟠, Yellow 🟡, Green 🟢, Blue 🔵, Brown 🟤, White ⚪️, Black ⚫️");
-        
+
         loop {
             let mut input = String::new();
-            io::stdin().read_line(&mut input).expect("Failed to read line");
+            io::stdin()
+                .read_line(&mut input)
+                .expect("Failed to read line");
             let input = input.trim().to_lowercase();
-            
+
             let color = match input.as_str() {
                 "red" => CodeColors::Red,
                 "orange" => CodeColors::Orange,
@@ -76,22 +79,27 @@ impl Board {
                     continue;
                 }
             };
-            
+
             guess.push(color);
-            
+
             if guess.len() == 5 {
                 break;
             }
         }
- 
+
         self.guesses.push(guess.clone());
         let feedback = self.get_feedback(guess.clone());
-        self.feedback.push(feedback);
+        self.feedback.push(feedback.clone());
+        let mut won_game = true;
+        for color in feedback {
+            match color {
+                FeedbackColors::Black => continue,
+                _ => won_game = false,
+            }
+        }
 
-
-        guess
+        won_game
     }
-    
 
     // pub fn add_guess(&mut self, guess: Vec<CodeColors>) {
     //     if guess.len() != 5 {
@@ -105,30 +113,48 @@ impl Board {
         let mut code_remaining = self.code.clone();
         let mut feedback = vec![];
 
-        // checking for same color ad same position
-        for (index, color) in guess.iter().enumerate(){
-            if *color == self.code[index]{
+        // checking for same color and same position
+        let mut indices_to_remove = vec![];
+        for (index, color) in guess.iter().enumerate() {
+            if *color == self.code[index] {
                 feedback.push(FeedbackColors::Black);
-                guess_remaining.remove(index);
-                code_remaining.remove(index);
+                indices_to_remove.push(index);
             }
         }
 
-        // check if guess is correct
-        if feedback.len() == 5 {
-            return feedback
-            // TODO: add game winning function to call here.
+        // remove correct answers.
+        // Do so by reversing the order of indices to remove since they were created smallest to biggest.
+        for index in indices_to_remove.into_iter().rev() {
+            guess_remaining.remove(index);
+            code_remaining.remove(index);
         }
 
         // check for same color, different position
-        for guess_color in guess_remaining.into_iter() {
-            let result = code_remaining.clone().into_iter().enumerate().find(|(_,code_color)| *code_color==guess_color);
-            match result {
-                Some((index, _)) => {
-                    feedback.push(FeedbackColors::White);
-                    code_remaining.remove(index);
-                },
-                None => continue,
+        while !guess_remaining.is_empty() {
+            let mut end_of_matches = false;
+            for (guess_index, guess_color) in guess_remaining.clone().into_iter().enumerate() {
+                let result = code_remaining
+                    .clone()
+                    .into_iter()
+                    .enumerate()
+                    .find(|(_, code_color)| *code_color == guess_color);
+                match result {
+                    Some((index, _)) => {
+                        guess_remaining.remove(guess_index);
+                        code_remaining.remove(index);
+                        feedback.push(FeedbackColors::White);
+                        break;
+                    }
+                    None => {
+                        if guess_index == guess_remaining.len() - 1 {
+                            end_of_matches = true;
+                        }
+                        continue;
+                    }
+                }
+            }
+            if end_of_matches {
+                break;
             }
         }
 
@@ -141,33 +167,25 @@ impl Board {
         assert!(feedback.len() == 5);
 
         feedback
-
-    }
-
-    fn game_over(self) {
-        todo!()
     }
 
     pub fn print_board(&self) {
-        let mut guess_string = "".to_string();
-        for guess in &self.guesses {
+        for (guess, feedback) in self.guesses.iter().zip(self.feedback.iter()) {
+            let mut guess_string = "".to_string();
             for guess_color in guess {
                 match guess_color {
-                    CodeColors::Red => guess_string.push_str("🔴"),
-                    CodeColors::Orange => guess_string.push_str("🟠"),
-                    CodeColors::Yellow => guess_string.push_str("🟡"),
-                    CodeColors::Green => guess_string.push_str("🟢"),
-                    CodeColors::Blue => guess_string.push_str("🔵"),
-                    CodeColors::Brown => guess_string.push_str("🟤"),
+                    CodeColors::Red => guess_string.push('🔴'),
+                    CodeColors::Orange => guess_string.push('🟠'),
+                    CodeColors::Yellow => guess_string.push('🟡'),
+                    CodeColors::Green => guess_string.push('🟢'),
+                    CodeColors::Blue => guess_string.push('🔵'),
+                    CodeColors::Brown => guess_string.push('🟤'),
                     CodeColors::White => guess_string.push_str("⚪️"),
                     CodeColors::Black => guess_string.push_str("⚫️"),
                 }
             }
-            
-        }
-        
-        let mut feedback_string = "".to_string();
-        for feedback in &self.feedback {
+
+            let mut feedback_string = "".to_string();
             for feedback_color in feedback {
                 match feedback_color {
                     FeedbackColors::White => feedback_string.push_str("⬜️"),
@@ -175,11 +193,11 @@ impl Board {
                     FeedbackColors::Empty => continue,
                 }
             }
+            println!("{} | {}\n", guess_string, feedback_string);
         }
+    }
 
-        print!("{} | {}\n", guess_string, feedback_string);
-}
-pub fn reveal_code(&self) -> Vec<CodeColors> {
-    return self.code.clone();
-}
+    pub fn reveal_code(&self) -> Vec<CodeColors> {
+        self.code.clone()
+    }
 }

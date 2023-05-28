@@ -7,12 +7,16 @@ fn main() {
 
     let mut number_of_guesses = 0;
     loop {
-        board.game_step();
+        let status = board.game_step();
         board.print_board();
         number_of_guesses += 1;
         // TODO: Remove guess limit?
         if number_of_guesses == 12 {
             println!("You lost! The code was: {:?}", board.reveal_code());
+            break;
+        }
+        if status {
+            println!("🎉 You won! 🎉 The code was: {:?}", board.reveal_code());
             break;
         }
     }
